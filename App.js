@@ -1,32 +1,39 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useFonts } from 'expo-font'; // ← FEHLT!
-import * as SplashScreen from 'expo-splash-screen'; // ← FEHLT!
-import { useEffect } from 'react'; // ← FEHLT!
+import { useFonts } from 'expo-font';
+import * as SplashScreen from 'expo-splash-screen';
+import { useEffect } from 'react';
 
-import CategoryScreen from './src/screens/CategoryScreen';
+// --- DEINE SCREENS ---
 import HomeScreen from './src/screens/HomeScreen';
 import PracticeScreen from './src/screens/PracticeScreen';
 import StatsScreen from './src/screens/StatsScreen';
+// 👇 WICHTIG: Hier importieren!
+import BibleBrowserScreen from './src/screens/BibleBrowserScreen';
 
 const Stack = createNativeStackNavigator()
-SplashScreen.preventAutoHideAsync()  // ← FEHLT!
+SplashScreen.preventAutoHideAsync()
 
 export default function App() {
+    // const [fontsLoaded] = useFonts({
+    //     'SourceSerif4-Regular': require('./assets/fonts/SourceSerif4-Regular.ttf'),
+    //     'SourceSerif4-Medium': require('./assets/fonts/SourceSerif4-Medium.ttf'),
+    //     'SourceSerif4-Bold': require('./assets/fonts/SourceSerif4-Bold.ttf'),
+    // })
+
     const [fontsLoaded] = useFonts({
-        'Inter-Regular': require('./assets/fonts/Inter-Regular.ttf'),
-        'Inter-Medium': require('./assets/fonts/Inter-Medium.ttf'),
-        'Inter-Bold': require('./assets/fonts/Inter-Bold.ttf'),
+        'CrimsonPro-Regular': require('./assets/fonts/CrimsonPro-Regular.ttf'),
+        'CrimsonPro-Medium': require('./assets/fonts/CrimsonPro-Medium.ttf'),
+        'CrimsonPro-SemiBold': require('./assets/fonts/CrimsonPro-SemiBold.ttf'),
+        'CrimsonPro-Bold': require('./assets/fonts/CrimsonPro-Bold.ttf'),
     })
 
-    // ← DAS FEHLT!
     useEffect(() => {
         if (fontsLoaded) {
             SplashScreen.hideAsync()
         }
     }, [fontsLoaded])
 
-    // ← DAS FEHLT!
     if (!fontsLoaded) {
         return null
     }
@@ -36,33 +43,27 @@ export default function App() {
             <Stack.Navigator
                 initialRouteName="Home"
                 screenOptions={{
-                    headerShown: true,
-                    headerStyle: {
-                        backgroundColor: '#fff',
-                    },
-                    headerTintColor: '#000',
+                    headerShown: false,
+                    animation: 'fade',
+                    contentStyle: { backgroundColor: '#FFFFFF' }
                 }}
             >
-                <Stack.Screen
-                    name="Home"
-                    component={HomeScreen}
-                    options={{ title: 'Memorion' }}
-                />
-                <Stack.Screen
-                    name="Practice"
-                    component={PracticeScreen}
-                    options={{ title: 'Practice' }}
-                />
-                <Stack.Screen
-                    name="Stats"
-                    component={StatsScreen}
-                    options={{ title: 'Statistics' }}
-                />
+                <Stack.Screen name="Home" component={HomeScreen} />
+                <Stack.Screen name="Practice" component={PracticeScreen} />
+                <Stack.Screen name="Stats" component={StatsScreen} />
 
                 <Stack.Screen
-                    name="Category"
-                    component={CategoryScreen}
-                    options={{ title: 'Kategorien' }}
+                    name="BibleBrowser"
+                    component={BibleBrowserScreen}
+                    options={{
+                        // Vorher war hier: animation: 'slide_from_bottom'
+                        // Ändere es zu:
+                        animation: 'fade',
+
+                        // Optional: Das macht den Übergang noch smoother
+                        presentation: 'card',
+                        headerShown: false
+                    }}
                 />
             </Stack.Navigator>
         </NavigationContainer>
