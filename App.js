@@ -26,6 +26,9 @@ export default function App() {
         'CrimsonPro-Medium': require('./assets/fonts/CrimsonPro-Medium.ttf'),
         'CrimsonPro-SemiBold': require('./assets/fonts/CrimsonPro-SemiBold.ttf'),
         'CrimsonPro-Bold': require('./assets/fonts/CrimsonPro-Bold.ttf'),
+        'Inter-Regular': require('./assets/fonts/Inter-Regular.ttf'),
+        'Inter-Medium': require('./assets/fonts/Inter-Medium.ttf'),
+        'Inter-Bold': require('./assets/fonts/Inter-Bold.ttf'),
     })
 
     useEffect(() => {

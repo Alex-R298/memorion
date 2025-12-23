@@ -57,6 +57,7 @@ export default function HomeScreen({ navigation }) {
   // Modal & Topics State
   const [topicsVisible, setTopicsVisible] = useState(false)
   const [selectedTopics, setSelectedTopics] = useState([])
+  const [savedVersesVisible, setSavedVersesVisible] = useState(false)
 
   // Initial Load
   useEffect(() => { 
@@ -272,34 +273,30 @@ export default function HomeScreen({ navigation }) {
           </View>
         </View>
 
-        {/* FEATURE: QUICK RESUME (Zeigt nur an wenn Verse vorhanden sind) */}
-        {recentVerses.length > 0 && (
-            <View style={styles.recentSection}>
-                <Text style={styles.sectionLabel}>WEITERLERNEN</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap: 12, paddingHorizontal: 0}}>
-                    {recentVerses.map((verse, index) => (
-                        <Pressable 
-                            key={index} 
-                            style={styles.recentCard}
-                            onPress={() => navigation.navigate('Practice')}
-                        >
-                            <BlurView intensity={80} tint="light" style={styles.glassContainerSmall}>
-                                <LinearGradient colors={['rgba(255,255,255,0.7)', 'rgba(255,255,255,0.3)']} style={StyleSheet.absoluteFill} />
-                                <View style={{flexDirection: 'row', alignItems: 'center'}}>
-                                    <View style={styles.recentIcon}>
-                                        <Feather name="book-open" size={14} color={COLORS.accent.primary} />
-                                    </View>
-                                    <View>
-                                        <Text style={styles.recentRef} numberOfLines={1}>{verse.book} {verse.chapter}:{verse.verse_number}</Text>
-                                        <Text style={styles.recentSub}>Kürzlich</Text>
-                                    </View>
-                                </View>
-                            </BlurView>
-                        </Pressable>
-                    ))}
-                </ScrollView>
-            </View>
-        )}
+        {/* --- MERK-LISTE BUTTON --- */}
+        <Pressable 
+            style={({pressed}) => [styles.savedListCard, pressed && {transform: [{scale: 0.98}]}]}
+            onPress={() => setSavedVersesVisible(true)}
+        >
+            <BlurView intensity={80} tint="light" style={styles.glassContainer}>
+                <LinearGradient colors={['rgba(255,255,255,0.7)', 'rgba(255,255,255,0.3)']} style={StyleSheet.absoluteFill} />
+                <View style={styles.savedListContent}>
+                    {/* Icon links */}
+                    <View style={styles.bookmarkCircle}>
+                        <Feather name="bookmark" size={24} color="#FFF" />
+                    </View>
+                    
+                    {/* Text Mitte */}
+                    <View style={{flex: 1, marginLeft: 16}}>
+                        <Text style={styles.savedListTitle}>Deine Merkliste</Text>
+                        <Text style={styles.savedListSub}>{recentVerses.length} Verse gespeichert</Text>
+                    </View>
+
+                    {/* Pfeil rechts */}
+                    <Feather name="chevron-right" size={20} color={COLORS.text.tertiary} />
+                </View>
+            </BlurView>
+        </Pressable>
 
         
 
@@ -460,6 +457,59 @@ export default function HomeScreen({ navigation }) {
         <View style={{height: 60}} />
 
       </ScrollView>
+
+      {/* --- MERK-LISTE MODAL --- */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={savedVersesVisible}
+        onRequestClose={() => setSavedVersesVisible(false)}
+      >
+          <View style={styles.modalContainer}>
+              <View style={styles.background}>
+                <LinearGradient colors={['rgba(212, 196, 176, 0.95)', 'rgba(201, 184, 168, 0.98)']} style={StyleSheet.absoluteFill} />
+                <BlurView intensity={80} style={StyleSheet.absoluteFill} tint="light" />
+              </View>
+
+              <View style={styles.modalContent}>
+                  <View style={styles.modalHeader}>
+                      <Text style={styles.modalTitle}>Deine Verse</Text>
+                      <Pressable onPress={() => setSavedVersesVisible(false)} style={styles.closeBtn}>
+                          <Text style={styles.closeBtnText}>Schließen</Text>
+                      </Pressable>
+                  </View>
+
+                  <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{paddingBottom: 40}}>
+                      {recentVerses.length === 0 ? (
+                          <Text style={{textAlign:'center', marginTop: 40, color: COLORS.text.tertiary, fontFamily: 'CrimsonPro-Medium'}}>
+                              Noch keine Verse gemerkt.
+                          </Text>
+                      ) : (
+                          recentVerses.map((verse, index) => (
+                              <Pressable 
+                                  key={index} 
+                                  style={styles.savedVerseItem}
+                                  onPress={() => {
+                                      setSavedVersesVisible(false);
+                                      navigation.navigate('Practice'); // Oder spezifisch starten
+                                  }}
+                              >
+                                  <BlurView intensity={60} tint="light" style={styles.glassContainerSmall}>
+                                      <View style={{flexDirection:'row', justifyContent:'space-between', alignItems:'center'}}>
+                                          <View style={{flex: 1}}>
+                                              <Text style={styles.itemReference}>{verse.book} {verse.chapter}:{verse.verse_number}</Text>
+                                              <Text style={styles.itemText} numberOfLines={1}>{verse.text}</Text>
+                                          </View>
+                                          <Feather name="play-circle" size={24} color={COLORS.accent.primary} />
+                                      </View>
+                                  </BlurView>
+                              </Pressable>
+                          ))
+                      )}
+                  </ScrollView>
+              </View>
+          </View>
+      </Modal>
 
       {/* POPUP MODAL */}
       <Modal
@@ -625,4 +675,16 @@ const styles = StyleSheet.create({
   actionCard: { flex: 1, height: 110, shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 10 },
   actionContent: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   actionTitle: { fontFamily: 'CrimsonPro-Bold', fontSize: 14, color: COLORS.text.secondary },
+
+  // SAVED LIST CARD
+  savedListCard: { height: 80, marginBottom: 24, borderRadius: 20, shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: {width:0, height:4} },
+  savedListContent: { flex: 1, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20 },
+  bookmarkCircle: { width: 48, height: 48, borderRadius: 24, backgroundColor: COLORS.accent.primary, justifyContent: 'center', alignItems: 'center', shadowColor: COLORS.accent.primary, shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: {width:0, height:4} },
+  savedListTitle: { fontFamily: 'CrimsonPro-Bold', fontSize: 18, color: COLORS.text.primary },
+  savedListSub: { fontFamily: 'CrimsonPro-Medium', fontSize: 14, color: COLORS.text.tertiary },
+
+  // SAVED LIST MODAL ITEMS
+  savedVerseItem: { marginBottom: 12, borderRadius: 16 },
+  itemReference: { fontFamily: 'CrimsonPro-Bold', fontSize: 16, color: COLORS.text.primary, marginBottom: 4 },
+  itemText: { fontFamily: 'CrimsonPro-Regular', fontSize: 14, color: COLORS.text.secondary },
 })
