@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
+import { ThemeProvider } from './src/lib/ThemeContext';
 
 // --- DEINE SCREENS ---
 import HomeScreen from './src/screens/HomeScreen';
@@ -42,6 +43,7 @@ export default function App() {
     }
 
     return (
+        <ThemeProvider>
         <NavigationContainer>
             <Stack.Navigator
                 initialRouteName="Home"
@@ -70,5 +72,6 @@ export default function App() {
                 />
             </Stack.Navigator>
         </NavigationContainer>
+        </ThemeProvider>
     )
 }

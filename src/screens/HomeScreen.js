@@ -3,10 +3,9 @@ import { BlurView } from 'expo-blur'
 import * as Haptics from 'expo-haptics'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useEffect, useState } from 'react'
-import { Alert, Dimensions, Image, Modal, Pressable, ScrollView, Share, StatusBar, StyleSheet, Text, View } from 'react-native'
+import { Alert, Dimensions, Image, Modal, Pressable, ScrollView, Share, StatusBar, StyleSheet, Switch, Text, View } from 'react-native'
 import bibleDataRaw from '../../assets/luther_1912.json'
 import { supabase } from '../lib/supabase'
-// HIER WAR DER FEHLER: Das // muss weg!
 import { getUserId } from '../lib/userSession'
 
 const { width, height } = Dimensions.get('window')
@@ -52,12 +51,16 @@ export default function HomeScreen({ navigation }) {
   
   // Features State
   const [recentVerses, setRecentVerses] = useState([])
-  const [userRank, setUserRank] = useState({ title: 'Neuling', icon: '🌱' })
+  const [userRank, setUserRank] = useState({ title: 'Neuling', icon: 'user' })
   
   // Modal & Topics State
   const [topicsVisible, setTopicsVisible] = useState(false)
   const [selectedTopics, setSelectedTopics] = useState([])
   const [savedVersesVisible, setSavedVersesVisible] = useState(false)
+  
+  // Settings State
+  const [settingsVisible, setSettingsVisible] = useState(false)
+  const [darkMode, setDarkMode] = useState(false) // Nur State für UI Demo
 
   // Initial Load
   useEffect(() => { 
@@ -156,24 +159,20 @@ export default function HomeScreen({ navigation }) {
 
   const addVerseOfDay = async () => {
     if (!verseOfDay) return;
-    
     try {
       const userId = await getUserId();
-
-      // --- SCHRITT 1: PRÜFEN OB SCHON VORHANDEN ---
       const { data: existingVerse } = await supabase
         .from('verses')
         .select('id')
         .eq('user_id', userId)
-        .eq('reference', verseOfDay.reference) // Wir prüfen anhand der Bibelstelle (z.B. "Johannes 3:16")
+        .eq('reference', verseOfDay.reference) 
         .maybeSingle();
 
       if (existingVerse) {
         Alert.alert("Bereits gemerkt", "Diesen Vers hast du schon in deiner Liste! 🤓");
-        return; // WICHTIG: Hier brechen wir ab, damit nichts doppelt gespeichert wird.
+        return; 
       }
 
-      // --- SCHRITT 2: WENN NEU, DANN SPEICHERN ---
       const { data: cats } = await supabase.from('categories').select('id').limit(1)
       const words = verseOfDay.text.split(' ')
       let hiddenIndex = 0
@@ -195,7 +194,7 @@ export default function HomeScreen({ navigation }) {
       
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert("Gespeichert", "Vers wurde erfolgreich hinzugefügt.");
-      loadUserData(); // Aktualisiert die "Zuletzt"-Liste sofort
+      loadUserData(); 
 
     } catch (e) {
       console.log(e);
@@ -248,7 +247,7 @@ export default function HomeScreen({ navigation }) {
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         
-        {/* HEADER MIT RANG */}
+        {/* HEADER MIT RANG & SETTINGS */}
         <View style={styles.header}>
           <View>
             <View style={{flexDirection: 'row', alignItems: 'center', gap: 8}}>
@@ -260,16 +259,36 @@ export default function HomeScreen({ navigation }) {
             </View>
             <Text style={styles.appName}>Memorion</Text>
           </View>
-          <View style={styles.streakContainer}>
-            <BlurView intensity={90} tint="light" style={styles.glassContainer}>
-              <LinearGradient colors={['rgba(255,255,255,0.6)', 'rgba(255,255,255,0.2)']} style={StyleSheet.absoluteFill} />
-              <View style={styles.streakContent}>
-                <View style={styles.fireIcon}>
-                  <Feather name="zap" size={14} color="#C97848" />
-                </View>
-                <Text style={styles.streakNumber}>3</Text>
+          
+          {/* RECHTE SEITE: STREAK + SETTINGS */}
+          <View style={styles.headerRightContainer}>
+              <View style={styles.streakContainer}>
+                <BlurView intensity={90} tint="light" style={styles.glassContainer}>
+                  <LinearGradient colors={['rgba(255,255,255,0.6)', 'rgba(255,255,255,0.2)']} style={StyleSheet.absoluteFill} />
+                  <View style={styles.streakContent}>
+                    <View style={styles.fireIcon}>
+                      <Feather name="zap" size={14} color="#C97848" />
+                    </View>
+                    <Text style={styles.streakNumber}>3</Text>
+                  </View>
+                </BlurView>
               </View>
-            </BlurView>
+
+              {/* SETTINGS BUTTON */}
+              <Pressable 
+                style={styles.settingsButton}
+                onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setSettingsVisible(true);
+                }}
+              >
+                  <BlurView intensity={90} tint="light" style={styles.glassContainer}>
+                     <LinearGradient colors={['rgba(255,255,255,0.6)', 'rgba(255,255,255,0.2)']} style={StyleSheet.absoluteFill} />
+                     <View style={styles.settingsIconContent}>
+                        <Feather name="settings" size={20} color={COLORS.text.secondary} />
+                     </View>
+                  </BlurView>
+              </Pressable>
           </View>
         </View>
 
@@ -352,8 +371,8 @@ export default function HomeScreen({ navigation }) {
                 <Text style={[styles.verseReference, {color: 'rgba(255,255,255,0.9)'}]}>{verseOfDay.reference}</Text>
                 <View style={styles.verseActions}>
                   <Pressable onPress={shareVerse} style={[styles.iconBtn, {borderColor: 'rgba(255,255,255,0.4)', backgroundColor: 'rgba(0,0,0,0.2)'}]}>
-                     <Feather name="share" size={18} color="#FFF" />
-                  </Pressable>
+                      <Feather name="share" size={18} color="#FFF" />
+                   </Pressable>
                   <View style={{flex:1}} />
                   <Pressable style={[styles.addButton, {backgroundColor: 'rgba(255,255,255,0.9)'}]} onPress={addVerseOfDay}>
                     <Feather name="bookmark" size={16} color={COLORS.text.primary} style={{marginRight: 6}} />
@@ -410,7 +429,7 @@ export default function HomeScreen({ navigation }) {
             </BlurView>
         </Pressable>
 
-        {/* HERO CARD (Wieder unten eingefügt!) */}
+        {/* HERO CARD */}
         <Pressable 
           style={({pressed}) => [styles.heroCard, pressed && { transform: [{scale: 0.98}] }]}
           onPress={() => navigation.navigate('Practice')}
@@ -458,6 +477,113 @@ export default function HomeScreen({ navigation }) {
 
       </ScrollView>
 
+      {/* --- SETTINGS MODAL --- */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={settingsVisible}
+        onRequestClose={() => setSettingsVisible(false)}
+      >
+          <View style={styles.modalContainer}>
+              <View style={styles.background}>
+                <LinearGradient colors={['rgba(212, 196, 176, 0.98)', 'rgba(201, 184, 168, 0.99)']} style={StyleSheet.absoluteFill} />
+                <BlurView intensity={90} style={StyleSheet.absoluteFill} tint="light" />
+              </View>
+
+              <View style={styles.modalContent}>
+                  <View style={styles.modalHeader}>
+                      <Text style={styles.modalTitle}>Einstellungen</Text>
+                      <Pressable onPress={() => setSettingsVisible(false)} style={styles.closeBtn}>
+                          <Text style={styles.closeBtnText}>Fertig</Text>
+                      </Pressable>
+                  </View>
+
+                  <ScrollView showsVerticalScrollIndicator={false}>
+                      
+                      <Text style={styles.sectionLabel}>ERSCHEINUNGSBILD</Text>
+                      
+                      {/* Setting Item: Dark Mode */}
+                      <View style={styles.settingItem}>
+                        <BlurView intensity={60} tint="light" style={styles.glassContainerSmall}>
+                           <View style={styles.settingRow}>
+                               <View style={styles.settingLeft}>
+                                   <View style={styles.settingIconBox}>
+                                       <Feather name="moon" size={20} color={COLORS.text.secondary} />
+                                   </View>
+                                   <Text style={styles.settingText}>Dunkelmodus</Text>
+                               </View>
+                               <Switch 
+                                   trackColor={{ false: "#767577", true: COLORS.accent.primary }}
+                                   thumbColor={darkMode ? "#f4f3f4" : "#f4f3f4"}
+                                   ios_backgroundColor="#3e3e3e"
+                                   onValueChange={() => {
+                                       Haptics.selectionAsync();
+                                       setDarkMode(!darkMode);
+                                   }}
+                                   value={darkMode}
+                               />
+                           </View>
+                        </BlurView>
+                      </View>
+
+                      {/* Setting Item: Font */}
+                      <View style={styles.settingItem}>
+                        <BlurView intensity={60} tint="light" style={styles.glassContainerSmall}>
+                           <View style={styles.settingRow}>
+                               <View style={styles.settingLeft}>
+                                   <View style={styles.settingIconBox}>
+                                       <Feather name="type" size={20} color={COLORS.text.secondary} />
+                                   </View>
+                                   <Text style={styles.settingText}>Schriftart</Text>
+                               </View>
+                               <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                                   <Text style={{fontFamily: 'CrimsonPro-Regular', marginRight: 8, color: COLORS.text.tertiary}}>Crimson Pro</Text>
+                                   <Feather name="chevron-right" size={16} color={COLORS.text.tertiary} />
+                               </View>
+                           </View>
+                        </BlurView>
+                      </View>
+
+                      <View style={{height: 20}} />
+                      <Text style={styles.sectionLabel}>ALLGEMEIN</Text>
+
+                      {/* Setting Item: Notifications */}
+                      <View style={styles.settingItem}>
+                        <BlurView intensity={60} tint="light" style={styles.glassContainerSmall}>
+                           <View style={styles.settingRow}>
+                               <View style={styles.settingLeft}>
+                                   <View style={styles.settingIconBox}>
+                                       <Feather name="bell" size={20} color={COLORS.text.secondary} />
+                                   </View>
+                                   <Text style={styles.settingText}>Erinnerungen</Text>
+                               </View>
+                               <Feather name="chevron-right" size={16} color={COLORS.text.tertiary} />
+                           </View>
+                        </BlurView>
+                      </View>
+                        
+                      <Pressable style={styles.settingItem}>
+                        <BlurView intensity={60} tint="light" style={styles.glassContainerSmall}>
+                           <View style={styles.settingRow}>
+                               <View style={styles.settingLeft}>
+                                   <View style={styles.settingIconBox}>
+                                       <Feather name="info" size={20} color={COLORS.text.secondary} />
+                                   </View>
+                                   <Text style={styles.settingText}>Über Memorion</Text>
+                               </View>
+                               <Feather name="chevron-right" size={16} color={COLORS.text.tertiary} />
+                           </View>
+                        </BlurView>
+                      </Pressable>
+
+                      <View style={{height: 40}} />
+                      <Text style={{textAlign: 'center', color: COLORS.text.tertiary, fontSize: 12, fontFamily: 'CrimsonPro-Medium'}}>Version 1.0.2</Text>
+
+                  </ScrollView>
+              </View>
+          </View>
+      </Modal>
+
       {/* --- MERK-LISTE MODAL --- */}
       <Modal
         animationType="slide"
@@ -491,7 +617,7 @@ export default function HomeScreen({ navigation }) {
                                   style={styles.savedVerseItem}
                                   onPress={() => {
                                       setSavedVersesVisible(false);
-                                      navigation.navigate('Practice'); // Oder spezifisch starten
+                                      navigation.navigate('Practice'); 
                                   }}
                               >
                                   <BlurView intensity={60} tint="light" style={styles.glassContainerSmall}>
@@ -589,7 +715,7 @@ const styles = StyleSheet.create({
     flex: 1, borderRadius: 24, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.8)', overflow: 'hidden',
   },
   glassContainerSmall: {
-    paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, borderWidth: 1, 
+    paddingHorizontal: 16, paddingVertical: 12, borderRadius: 20, borderWidth: 1, 
     borderColor: 'rgba(255,255,255,0.6)', overflow: 'hidden',
   },
 
@@ -600,10 +726,24 @@ const styles = StyleSheet.create({
   rankBadge: { paddingHorizontal: 8, paddingVertical: 2, backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: 8, borderWidth: 1, borderColor: 'rgba(255,255,255,0.5)', marginBottom: 8 },
   rankText: { fontFamily: 'CrimsonPro-Bold', fontSize: 10, color: COLORS.text.secondary },
 
-  streakContainer: { height: 44, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 8 },
-  streakContent: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8 },
-  fireIcon: { marginRight: 8 },
+  // HEADER RIGHT CONTAINER
+  headerRightContainer: { flexDirection: 'row', gap: 10 },
+
+  streakContainer: { height: 44, minWidth: 60, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 8 },
+  streakContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', flex: 1, paddingHorizontal: 12 },
+  fireIcon: { marginRight: 6 },
   streakNumber: { fontFamily: 'CrimsonPro-Bold', fontSize: 18, color: COLORS.text.primary },
+
+  // SETTINGS BUTTON
+  settingsButton: { width: 44, height: 44, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12 },
+  settingsIconContent: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+
+  // SETTINGS MODAL ITEMS
+  settingItem: { marginBottom: 12 },
+  settingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  settingLeft: { flexDirection: 'row', alignItems: 'center' },
+  settingIconBox: { width: 32, height: 32, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.5)', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  settingText: { fontFamily: 'CrimsonPro-SemiBold', fontSize: 16, color: COLORS.text.primary },
 
   // RECENT SECTION
   recentSection: { marginBottom: 24 },
