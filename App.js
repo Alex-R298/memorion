@@ -8,6 +8,7 @@ import { ThemeProvider } from './src/lib/ThemeContext';
 // --- DEINE SCREENS ---
 import HomeScreen from './src/screens/HomeScreen';
 import PracticeScreen from './src/screens/PracticeScreen';
+import StartScreen from './src/screens/StartScreen';
 import StatsScreen from './src/screens/StatsScreen';
 // 👇 WICHTIG: Hier importieren!
 import BibleBrowserScreen from './src/screens/BibleBrowserScreen';
@@ -46,13 +47,14 @@ export default function App() {
         <ThemeProvider>
         <NavigationContainer>
             <Stack.Navigator
-                initialRouteName="Home"
+                initialRouteName="Start"
                 screenOptions={{
                     headerShown: false,
                     animation: 'fade',
                     contentStyle: { backgroundColor: '#FFFFFF' }
                 }}
             >
+                <Stack.Screen name="Start" component={StartScreen} />
                 <Stack.Screen name="Home" component={HomeScreen} />
                 <Stack.Screen name="Practice" component={PracticeScreen} />
                 <Stack.Screen name="Stats" component={StatsScreen} />

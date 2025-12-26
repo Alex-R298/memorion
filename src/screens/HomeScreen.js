@@ -1,9 +1,9 @@
-import { Feather } from '@expo/vector-icons'
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons'
 import { BlurView } from 'expo-blur'
 import * as Haptics from 'expo-haptics'
 import { LinearGradient } from 'expo-linear-gradient'
-import { useEffect, useState } from 'react'
-import { Alert, Dimensions, Image, Modal, Pressable, ScrollView, Share, StatusBar, StyleSheet, Switch, Text, View } from 'react-native'
+import { useEffect, useRef, useState } from 'react'
+import { Alert, Animated, Dimensions, Image, Modal, Pressable, ScrollView, Share, StatusBar, StyleSheet, Switch, Text, View } from 'react-native'
 import bibleDataRaw from '../../assets/luther_1912.json'
 import { supabase } from '../lib/supabase'
 import { getUserId } from '../lib/userSession'
@@ -20,12 +20,18 @@ const COLORS = {
   activeBorder: '#C97848',
 }
 
-// BILDER FÜR VERS DES TAGES (Natur/Ruhe)
+// BILDER FÜR VERS DES TAGES
 const BACKGROUND_IMAGES = [
-    'https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?q=80&w=1000&auto=format&fit=crop', 
-    'https://images.unsplash.com/photo-1472214103451-9374bd1c798e?q=80&w=1000&auto=format&fit=crop', 
-    'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=1000&auto=format&fit=crop', 
-    'https://images.unsplash.com/photo-1511497584788-876760111969?q=80&w=1000&auto=format&fit=crop',
+    require('../../assets/img/img-1.jpg'), 
+    require('../../assets/img/img-2.jpg'), 
+    require('../../assets/img/img-3.jpg'), 
+    require('../../assets/img/img-4.jpg'),
+    require('../../assets/img/img-5.jpg'),
+    require('../../assets/img/img-6.jpg'),
+    require('../../assets/img/img-7.jpg'),
+    require('../../assets/img/img-8.jpg'),
+    require('../../assets/img/img-9.jpg'),
+    require('../../assets/img/img-10.jpg'),
 ]
 
 const TOPICS = [
@@ -43,6 +49,9 @@ const TOPICS = [
     { name: 'Glaube', icon: 'shield' },
 ]
 
+// Animated BlurView erstellen für den Fade-In Effekt
+const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
+
 export default function HomeScreen({ navigation }) {
   const [verseOfDay, setVerseOfDay] = useState(null)
   const [displayedText, setDisplayedText] = useState('')
@@ -51,7 +60,13 @@ export default function HomeScreen({ navigation }) {
   
   // Features State
   const [recentVerses, setRecentVerses] = useState([])
-  const [userRank, setUserRank] = useState({ title: 'Neuling', icon: 'user' })
+  
+  // RANG SYSTEM STATE
+  const [userRank, setUserRank] = useState({ 
+      title: 'Neuling', 
+      iconName: 'sprout', 
+      color: '#4CAF50' 
+  })
   
   // Modal & Topics State
   const [topicsVisible, setTopicsVisible] = useState(false)
@@ -60,7 +75,10 @@ export default function HomeScreen({ navigation }) {
   
   // Settings State
   const [settingsVisible, setSettingsVisible] = useState(false)
-  const [darkMode, setDarkMode] = useState(false) // Nur State für UI Demo
+  const [darkMode, setDarkMode] = useState(false)
+
+  // --- ANIMATION REF ---
+  const scrollY = useRef(new Animated.Value(0)).current;
 
   // Initial Load
   useEffect(() => { 
@@ -101,13 +119,13 @@ export default function HomeScreen({ navigation }) {
           const userId = await getUserId(); 
           if (!userId) return;
 
-          // 1. ZULETZT HINZUGEFÜGT (Quick Resume)
+          // 1. ZULETZT HINZUGEFÜGT
           const { data: recents } = await supabase
               .from('verses')
               .select('*')
               .eq('user_id', userId)
-              .order('created_at', { ascending: false }) // Neueste zuerst
-              .limit(5); // Nur die letzten 5
+              .order('created_at', { ascending: false }) 
+              .limit(5); 
           
           if (recents && recents.length > 0) {
               setRecentVerses(recents);
@@ -120,10 +138,16 @@ export default function HomeScreen({ navigation }) {
               .eq('user_id', userId);
           
           const totalVerses = count || 0;
-          if (totalVerses >= 50) setUserRank({ title: 'Meister', icon: '👑' });
-          else if (totalVerses >= 20) setUserRank({ title: 'Wächter', icon: '🛡️' });
-          else if (totalVerses >= 5) setUserRank({ title: 'Entdecker', icon: '🧭' });
-          else setUserRank({ title: 'Neuling', icon: '🌱' });
+          
+          if (totalVerses >= 50) {
+              setUserRank({ title: 'Meister', iconName: 'trophy-award', color: '#D4AF37' }); 
+          } else if (totalVerses >= 20) {
+              setUserRank({ title: 'Wächter', iconName: 'shield-check', color: '#607D8B' }); 
+          } else if (totalVerses >= 5) {
+              setUserRank({ title: 'Entdecker', iconName: 'compass-outline', color: '#8D6E63' }); 
+          } else {
+              setUserRank({ title: 'Neuling', iconName: 'sprout', color: '#66BB6A' }); 
+          }
 
       } catch (e) {
           console.log("Error loading user data", e);
@@ -231,6 +255,28 @@ export default function HomeScreen({ navigation }) {
       navigation.navigate('BibleBrowser', { initialSearch: cleanName });
   }
 
+  // --- ANIMATIONS WERTE ---
+  // Header Hintergrund Opacity: 0 am Anfang, 1 ab 50px Scroll
+  const headerOpacity = scrollY.interpolate({
+    inputRange: [0, 50],
+    outputRange: [0, 1],
+    extrapolate: 'clamp'
+  });
+
+  // NEU: Schatten-Intensität (für das "Hervorheben")
+  const headerShadow = scrollY.interpolate({
+    inputRange: [0, 50],
+    outputRange: [0, 0.15], // Von 0 auf 15% Schatten
+    extrapolate: 'clamp'
+  });
+
+  // Header Border Opacity
+  const borderOpacity = scrollY.interpolate({
+    inputRange: [0, 50],
+    outputRange: [0, 1],
+    extrapolate: 'clamp'
+  });
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
@@ -245,53 +291,95 @@ export default function HomeScreen({ navigation }) {
         <View style={styles.noiseOverlay} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        
-        {/* HEADER MIT RANG & SETTINGS */}
-        <View style={styles.header}>
-          <View>
-            <View style={{flexDirection: 'row', alignItems: 'center', gap: 8}}>
-                <Text style={styles.greeting}>GUTEN MORGEN</Text>
-                {/* Rang Badge */}
-                <View style={styles.rankBadge}>
-                    <Text style={styles.rankText}>{userRank.icon} {userRank.title}</Text>
-                </View>
-            </View>
-            <Text style={styles.appName}>Memorion</Text>
-          </View>
+      {/* --- STICKY NAVBAR HEADER --- */}
+      <View style={styles.stickyHeaderContainer}>
+          {/* Animierter Glass Hintergrund */}
+          <AnimatedBlurView 
+            intensity={90} 
+            tint="light" 
+            style={[StyleSheet.absoluteFill, { opacity: headerOpacity }]} 
+          />
           
-          {/* RECHTE SEITE: STREAK + SETTINGS */}
-          <View style={styles.headerRightContainer}>
-              <View style={styles.streakContainer}>
-                <BlurView intensity={90} tint="light" style={styles.glassContainer}>
-                  <LinearGradient colors={['rgba(255,255,255,0.6)', 'rgba(255,255,255,0.2)']} style={StyleSheet.absoluteFill} />
-                  <View style={styles.streakContent}>
-                    <View style={styles.fireIcon}>
-                      <Feather name="zap" size={14} color="#C97848" />
+          {/* Animierter Hintergrund & Schatten */}
+          <Animated.View style={[
+              StyleSheet.absoluteFill, 
+              { 
+                  backgroundColor: 'rgba(255,255,255,0.4)',
+                  borderBottomWidth: 1, 
+                  borderBottomColor: 'rgba(255,255,255,0.5)',
+                  opacity: borderOpacity,
+                  // Schatten für 3D Effekt beim Scrollen
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 6 },
+                  shadowRadius: 10,
+                  shadowOpacity: headerShadow, 
+              }
+          ]} />
+
+          {/* Header Inhalt */}
+          <View style={styles.headerContent}>
+             <View>
+                <View style={{flexDirection: 'row', alignItems: 'center', gap: 8}}>
+                    <Text style={styles.greeting}>GUTEN MORGEN</Text>
+                    {/* Rang Badge */}
+                    <View style={styles.rankBadge}>
+                        <MaterialCommunityIcons 
+                            name={userRank.iconName} 
+                            size={12} 
+                            color={userRank.color} 
+                            style={{marginRight: 4}}
+                        />
+                        <Text style={[styles.rankText, {color: COLORS.text.secondary}]}>{userRank.title}</Text>
                     </View>
-                    <Text style={styles.streakNumber}>3</Text>
+                </View>
+                <Text style={styles.appName}>Memorion</Text>
+             </View>
+             
+             {/* Rechte Seite: Streak & Settings */}
+             <View style={styles.headerRightContainer}>
+                  {/* STREAK */}
+                  <View style={styles.streakContainer}>
+                    <BlurView intensity={90} tint="light" style={styles.glassContainer}>
+                      <LinearGradient colors={['rgba(255,255,255,0.6)', 'rgba(255,255,255,0.2)']} style={StyleSheet.absoluteFill} />
+                      <View style={styles.streakContent}>
+                        <View style={styles.fireIcon}>
+                          <Feather name="zap" size={14} color="#C97848" />
+                        </View>
+                        <Text style={styles.streakNumber}>3</Text>
+                      </View>
+                    </BlurView>
                   </View>
-                </BlurView>
-              </View>
 
-              {/* SETTINGS BUTTON */}
-              <Pressable 
-                style={styles.settingsButton}
-                onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    setSettingsVisible(true);
-                }}
-              >
-                  <BlurView intensity={90} tint="light" style={styles.glassContainer}>
-                     <LinearGradient colors={['rgba(255,255,255,0.6)', 'rgba(255,255,255,0.2)']} style={StyleSheet.absoluteFill} />
-                     <View style={styles.settingsIconContent}>
-                        <Feather name="settings" size={20} color={COLORS.text.secondary} />
-                     </View>
-                  </BlurView>
-              </Pressable>
+                  {/* SETTINGS BUTTON */}
+                  <Pressable 
+                    style={styles.settingsButton}
+                    onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setSettingsVisible(true);
+                    }}
+                  >
+                      <BlurView intensity={90} tint="light" style={styles.glassContainer}>
+                          <LinearGradient colors={['rgba(255,255,255,0.6)', 'rgba(255,255,255,0.2)']} style={StyleSheet.absoluteFill} />
+                          <View style={styles.settingsIconContent}>
+                             <Feather name="settings" size={20} color={COLORS.text.secondary} />
+                          </View>
+                      </BlurView>
+                  </Pressable>
+             </View>
           </View>
-        </View>
+      </View>
 
+      {/* --- SCROLL CONTENT --- */}
+      <Animated.ScrollView 
+        contentContainerStyle={styles.scrollContent} 
+        showsVerticalScrollIndicator={false}
+        onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+            { useNativeDriver: true }
+        )}
+        scrollEventThrottle={16} 
+      >
+        
         {/* --- MERK-LISTE BUTTON --- */}
         <Pressable 
             style={({pressed}) => [styles.savedListCard, pressed && {transform: [{scale: 0.98}]}]}
@@ -300,57 +388,50 @@ export default function HomeScreen({ navigation }) {
             <BlurView intensity={80} tint="light" style={styles.glassContainer}>
                 <LinearGradient colors={['rgba(255,255,255,0.7)', 'rgba(255,255,255,0.3)']} style={StyleSheet.absoluteFill} />
                 <View style={styles.savedListContent}>
-                    {/* Icon links */}
                     <View style={styles.bookmarkCircle}>
                         <Feather name="bookmark" size={24} color="#FFF" />
                     </View>
-                    
-                    {/* Text Mitte */}
                     <View style={{flex: 1, marginLeft: 16}}>
                         <Text style={styles.savedListTitle}>Deine Merkliste</Text>
                         <Text style={styles.savedListSub}>{recentVerses.length} Verse gespeichert</Text>
                     </View>
-
-                    {/* Pfeil rechts */}
                     <Feather name="chevron-right" size={20} color={COLORS.text.tertiary} />
                 </View>
             </BlurView>
         </Pressable>
 
-        
-
         {/* CHALLENGE */}
         <View style={styles.challengeRow}>
            <View style={styles.challengeCard}>
               <BlurView intensity={90} tint="light" style={styles.glassContainer}>
-                 <LinearGradient colors={['rgba(255,255,255,0.7)', 'rgba(255,255,255,0.3)']} style={StyleSheet.absoluteFill} />
-                 <View style={styles.challengeInner}>
+                  <LinearGradient colors={['rgba(255,255,255,0.7)', 'rgba(255,255,255,0.3)']} style={StyleSheet.absoluteFill} />
+                  <View style={styles.challengeInner}>
                     <Text style={styles.challengeLabel}>Heute lernen</Text>
                     <View style={styles.challengeContent}>
                         <Text style={styles.challengeNumber}>0<Text style={styles.challengeTotal}>/2</Text></Text>
                         <Feather name="plus-circle" size={18} color={COLORS.accent.primary} />
                     </View>
                     <View style={styles.progressBarBg}><View style={[styles.progressBarFill, {width: '10%'}]} /></View>
-                 </View>
+                  </View>
               </BlurView>
            </View>
 
            <View style={styles.challengeCard}>
               <BlurView intensity={90} tint="light" style={styles.glassContainer}>
-                 <LinearGradient colors={['rgba(255,255,255,0.7)', 'rgba(255,255,255,0.3)']} style={StyleSheet.absoluteFill} />
-                 <View style={styles.challengeInner}>
+                  <LinearGradient colors={['rgba(255,255,255,0.7)', 'rgba(255,255,255,0.3)']} style={StyleSheet.absoluteFill} />
+                  <View style={styles.challengeInner}>
                     <Text style={styles.challengeLabel}>Wiederholen</Text>
                     <View style={styles.challengeContent}>
                         <Text style={styles.challengeNumber}>1<Text style={styles.challengeTotal}>/5</Text></Text>
                         <Feather name="rotate-cw" size={18} color={COLORS.accent.secondary} />
                     </View>
                     <View style={styles.progressBarBg}><View style={[styles.progressBarFill, {width: '20%', backgroundColor: COLORS.accent.secondary}]} /></View>
-                 </View>
+                  </View>
               </BlurView>
            </View>
         </View>
 
-        {/* VERS DES TAGES MIT BILD */}
+        {/* VERS DES TAGES */}
         {verseOfDay && (
           <View style={styles.verseOfDayCard}>
             <Image source={{uri: bgImage}} style={[StyleSheet.absoluteFill, {borderRadius: 24}]} />
@@ -384,7 +465,7 @@ export default function HomeScreen({ navigation }) {
           </View>
         )}
 
-        {/* THEMEN CONTAINER */}
+        {/* THEMEN */}
         <Text style={styles.sectionLabel}>DEINE THEMEN (max 4)</Text>
         <Pressable 
             onLongPress={() => {
@@ -475,7 +556,7 @@ export default function HomeScreen({ navigation }) {
 
         <View style={{height: 60}} />
 
-      </ScrollView>
+      </Animated.ScrollView>
 
       {/* --- SETTINGS MODAL --- */}
       <Modal
@@ -499,10 +580,9 @@ export default function HomeScreen({ navigation }) {
                   </View>
 
                   <ScrollView showsVerticalScrollIndicator={false}>
-                      
                       <Text style={styles.sectionLabel}>ERSCHEINUNGSBILD</Text>
                       
-                      {/* Setting Item: Dark Mode */}
+                      {/* Dark Mode */}
                       <View style={styles.settingItem}>
                         <BlurView intensity={60} tint="light" style={styles.glassContainerSmall}>
                            <View style={styles.settingRow}>
@@ -526,7 +606,7 @@ export default function HomeScreen({ navigation }) {
                         </BlurView>
                       </View>
 
-                      {/* Setting Item: Font */}
+                      {/* Font */}
                       <View style={styles.settingItem}>
                         <BlurView intensity={60} tint="light" style={styles.glassContainerSmall}>
                            <View style={styles.settingRow}>
@@ -547,7 +627,6 @@ export default function HomeScreen({ navigation }) {
                       <View style={{height: 20}} />
                       <Text style={styles.sectionLabel}>ALLGEMEIN</Text>
 
-                      {/* Setting Item: Notifications */}
                       <View style={styles.settingItem}>
                         <BlurView intensity={60} tint="light" style={styles.glassContainerSmall}>
                            <View style={styles.settingRow}>
@@ -637,7 +716,7 @@ export default function HomeScreen({ navigation }) {
           </View>
       </Modal>
 
-      {/* POPUP MODAL */}
+      {/* TOPICS MODAL */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -709,7 +788,9 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#D4C4B0' },
   background: { ...StyleSheet.absoluteFillObject },
   noiseOverlay: { ...StyleSheet.absoluteFillObject, opacity: 0.03, backgroundColor: 'rgba(0,0,0,0.02)' },
-  scrollContent: { padding: 24, paddingTop: 60 },
+  
+  // WICHTIG: Erhöhtes Padding, damit Content unter den neuen größeren Header passt
+  scrollContent: { padding: 24, paddingTop: 150 },
 
   glassContainer: {
     flex: 1, borderRadius: 24, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.8)', overflow: 'hidden',
@@ -719,38 +800,56 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.6)', overflow: 'hidden',
   },
 
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 },
-  greeting: { fontFamily: 'CrimsonPro-SemiBold', fontSize: 10, color: COLORS.text.tertiary, letterSpacing: 2.5, marginBottom: 8 },
-  appName: { fontFamily: 'CrimsonPro-Bold', fontSize: 32, color: COLORS.text.primary, letterSpacing: -1 },
+  // --- STICKY HEADER STYLES ---
+  stickyHeaderContainer: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      height: 130, // HÖHER als vorher (Notch Fix)
+      zIndex: 100,
+      justifyContent: 'flex-end',
+      paddingBottom: 16,
+      paddingHorizontal: 24,
+      paddingTop: 60, // MEHR ABSTAND von oben für Kamera
+  },
+  headerContent: {
+      flexDirection: 'row', 
+      justifyContent: 'space-between', 
+      alignItems: 'flex-end',
+  },
+
+  greeting: { fontFamily: 'CrimsonPro-SemiBold', fontSize: 10, color: COLORS.text.tertiary, letterSpacing: 2.5, marginBottom: 4 },
+  appName: { fontFamily: 'CrimsonPro-Bold', fontSize: 28, color: COLORS.text.primary, letterSpacing: -1, lineHeight: 32 },
   
-  rankBadge: { paddingHorizontal: 8, paddingVertical: 2, backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: 8, borderWidth: 1, borderColor: 'rgba(255,255,255,0.5)', marginBottom: 8 },
-  rankText: { fontFamily: 'CrimsonPro-Bold', fontSize: 10, color: COLORS.text.secondary },
+  rankBadge: { 
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 8, 
+      paddingVertical: 2, 
+      backgroundColor: 'rgba(255,255,255,0.5)', 
+      borderRadius: 12, 
+      borderWidth: 1, 
+      borderColor: 'rgba(255,255,255,0.6)', 
+      marginBottom: 4 
+  },
+  rankText: { fontFamily: 'CrimsonPro-Bold', fontSize: 10 },
 
-  // HEADER RIGHT CONTAINER
-  headerRightContainer: { flexDirection: 'row', gap: 10 },
+  headerRightContainer: { flexDirection: 'row', gap: 10, alignItems: 'center', paddingBottom: 2 },
 
-  streakContainer: { height: 44, minWidth: 60, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 8 },
-  streakContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', flex: 1, paddingHorizontal: 12 },
-  fireIcon: { marginRight: 6 },
-  streakNumber: { fontFamily: 'CrimsonPro-Bold', fontSize: 18, color: COLORS.text.primary },
+  streakContainer: { height: 40, minWidth: 55, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 8 },
+  streakContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', flex: 1, paddingHorizontal: 10 },
+  fireIcon: { marginRight: 4 },
+  streakNumber: { fontFamily: 'CrimsonPro-Bold', fontSize: 16, color: COLORS.text.primary },
 
-  // SETTINGS BUTTON
-  settingsButton: { width: 44, height: 44, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12 },
+  settingsButton: { width: 40, height: 40, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12 },
   settingsIconContent: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
-  // SETTINGS MODAL ITEMS
   settingItem: { marginBottom: 12 },
   settingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   settingLeft: { flexDirection: 'row', alignItems: 'center' },
   settingIconBox: { width: 32, height: 32, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.5)', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
   settingText: { fontFamily: 'CrimsonPro-SemiBold', fontSize: 16, color: COLORS.text.primary },
-
-  // RECENT SECTION
-  recentSection: { marginBottom: 24 },
-  recentCard: { marginRight: 8, minWidth: 160 },
-  recentIcon: { width: 24, height: 24, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.5)', justifyContent: 'center', alignItems: 'center', marginRight: 10 },
-  recentRef: { fontFamily: 'CrimsonPro-Bold', fontSize: 13, color: COLORS.text.primary },
-  recentSub: { fontFamily: 'CrimsonPro-Medium', fontSize: 10, color: COLORS.text.tertiary },
 
   challengeRow: { flexDirection: 'row', gap: 12, marginBottom: 24 },
   challengeCard: { flex: 1, height: 110, shadowColor: "#000", shadowOpacity: 0.08, shadowRadius: 15, shadowOffset: {height:6, width:0} },
@@ -785,10 +884,6 @@ const styles = StyleSheet.create({
   tileText: { fontFamily: 'CrimsonPro-Bold', fontSize: 16, color: COLORS.text.secondary },
   xBadge: { position: 'absolute', top: 10, right: 10, width: 20, height: 20, borderRadius: 10, backgroundColor: COLORS.accent.primary, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#FFF' },
 
-  moodScroll: { marginBottom: 32, overflow: 'visible' },
-  moodChip: { marginRight: 0, shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 5 },
-  moodText: { fontFamily: 'CrimsonPro-Medium', fontSize: 14, color: COLORS.text.secondary },
-
   verseOfDayCard: { marginBottom: 32, shadowColor: "#000", shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.12, shadowRadius: 24, elevation: 12 },
   verseContent: { padding: 24 },
   verseLabelRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
@@ -816,14 +911,12 @@ const styles = StyleSheet.create({
   actionContent: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   actionTitle: { fontFamily: 'CrimsonPro-Bold', fontSize: 14, color: COLORS.text.secondary },
 
-  // SAVED LIST CARD
   savedListCard: { height: 80, marginBottom: 24, borderRadius: 20, shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: {width:0, height:4} },
   savedListContent: { flex: 1, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20 },
   bookmarkCircle: { width: 48, height: 48, borderRadius: 24, backgroundColor: COLORS.accent.primary, justifyContent: 'center', alignItems: 'center', shadowColor: COLORS.accent.primary, shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: {width:0, height:4} },
   savedListTitle: { fontFamily: 'CrimsonPro-Bold', fontSize: 18, color: COLORS.text.primary },
   savedListSub: { fontFamily: 'CrimsonPro-Medium', fontSize: 14, color: COLORS.text.tertiary },
 
-  // SAVED LIST MODAL ITEMS
   savedVerseItem: { marginBottom: 12, borderRadius: 16 },
   itemReference: { fontFamily: 'CrimsonPro-Bold', fontSize: 16, color: COLORS.text.primary, marginBottom: 4 },
   itemText: { fontFamily: 'CrimsonPro-Regular', fontSize: 14, color: COLORS.text.secondary },
